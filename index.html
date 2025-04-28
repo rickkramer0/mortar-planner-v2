@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Town Defense Mortar Planner</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; background: #111; color: #eee; }
+        canvas { border: 2px solid #555; margin-top: 20px; }
+        #info { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Town Defense Mortar Planner</h1>
+    <p>Click a mortar, then click a target!</p>
+    <canvas id="mapCanvas" width="700" height="580"></canvas>
+
+    <div id="info"></div>
+
+    <script>
+    const canvas = document.getElementById('mapCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const mapImg = new Image();
+    mapImg.src = 'map.jpg'; // <-- your cropped map file must be named map.jpg and placed next to this file
+
+    const topLeft = { x: 25424, z: 5194 };
+    const bottomRight = { x: 26424, z: 6194 };
+
+    const mortars = [
+        { name: 'Mortar 1', x: 25894, z: 5490 },
+        { name: 'Mortar 2', x: 25653, z: 5425 }
+    ];
+
+    let selectedMortar = null;
+    let targetPos = null;
+
+    function worldToCanvas(x, z) {
+        const px = ((x - topLeft.x) / (bottomRight.x - topLeft.x)) * canvas.width;
+        const py = ((z - topLeft.z) / (bottomRight.z - topLeft.z)) * canvas.height;
+        return { x: px, y: py };
+    }
+
+    function canvasToWorld(px, py) {
+        const x = topLeft.x + (px / canvas.width) * (bottomRight.x - topLeft.x);
+        const z = topLeft.z + (py / canvas.height) * (bottomRight.z - topLeft.z);
+        return { x: x, z: z };
+    }
+
+    mapImg.onload = function() {
+        draw();
+    };
+
+    canvas.addEventListener('click', function(event) {
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = event.clientX - rect.left;
+        const mouseY = event.clientY - rect.top;
+
+        if (!selectedMortar) {
+            for (let mortar of mortars) {
+                const pos = worldToCanvas(mortar.x, mortar.z);
+                if (Math.hypot(pos.x - mouseX, pos.y - mouseY) < 10) {
+                    selectedMortar = mortar;
+                    draw();
+                    return;
+                }
+            }
+        } else {
+            targetPos = canvasToWorld(mouseX, mouseY);
+            draw();
+            showInfo();
+        }
+    });
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(mapImg, 0, 0, canvas.width, canvas.height);
+
+        for (let mortar of mortars) {
+            const pos = worldToCanvas(mortar.x, mortar.z);
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, 5, 0, 2 * Math.PI);
+            ctx.fillStyle = mortar === selectedMortar ? 'lime' : 'red';
+            ctx.fill();
+            ctx.stroke();
+        }
+
+        if (targetPos) {
+            const pos = worldToCanvas(targetPos.x, targetPos.z);
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, 5, 0, 2 * Math.PI);
+            ctx.fillStyle = 'cyan';
+            ctx.fill();
+            ctx.stroke();
+        }
+    }
+
+    function showInfo() {
+        if (!selectedMortar || !targetPos) return;
+
+        const dx = targetPos.x - selectedMortar.x;
+        const dz = targetPos.z - selectedMortar.z;
+        const distance = Math.sqrt(dx * dx + dz * dz);
+
+        let angle;
+        if (distance <= 104) angle = 70;
+        else if (distance <= 126) angle = 65;
+        else if (distance <= 135) angle = 62.5;
+        else if (distance <= 140) angle = 60;
+        else if (distance <= 148) angle = 57.5;
+        else if (distance <= 152) angle = 55;
+        else if (distance <= 158) angle = 52.5;
+        else if (distance <= 162) angle = 50;
+        else angle = 45;
+
+        let lookAngle = Math.atan2(dx, dz) * 180 / Math.PI;
+        lookAngle = (lookAngle + 360) % 360;
+        lookAngle = lookAngle > 180 ? lookAngle - 360 : lookAngle;
+
+        let infoText = `
+            <strong>Selected Mortar:</strong> ${selectedMortar.name}<br>
+            <strong>Distance to Target:</strong> ${distance.toFixed(2)} blocks<br>
+            <strong>Firing Angle:</strong> ${angle}°<br>
+            <strong>Look Direction:</strong> ${lookAngle.toFixed(2)}°<br>
+        `;
+
+        if (distance > 166) {
+            infoText += `<span style="color:red;"><strong>Target out of range!</strong></span>`;
+        } else {
+            if (distance >= (104 - 5) && distance <= (166 + 5)) {
+                infoText += `<span style="color:lime;"><strong>Shot within 5 block radius - HIT!</strong></span>`;
+            } else {
+                infoText += `<span style="color:orange;"><strong>Shot outside 5 block radius - MISS!</strong></span>`;
+            }
+        }
+
+        document.getElementById('info').innerHTML = infoText;
+    }
+    </script>
+</body>
+</html>
