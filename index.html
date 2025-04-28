@@ -87,7 +87,7 @@
         if (targetPos) {
             const pos = worldToCanvas(targetPos.x, targetPos.z);
             ctx.beginPath();
-            ctx.arc(pos.x, pos.y, 5, 0, 2 * Math.PI);
+            ctx.arc(pos.x, pos.y, 1, 0, 2 * Math.PI);
             ctx.fillStyle = 'cyan';
             ctx.fill();
             ctx.stroke();
