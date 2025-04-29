@@ -1,211 +1,220 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Town Defense Mortar Planner</title>
-    <style>
-        body { font-family: Arial, sans-serif; background: #111; color: #eee; margin: 0; padding: 0; display: flex; flex-direction: row; height: 100vh; }
-        #left { flex: 2; display: flex; flex-direction: column; align-items: center; justify-content: start; padding: 20px; }
-        #right { flex: 1; background: #222; padding: 20px; overflow-y: auto; }
-        canvas { border: 2px solid #555; margin-top: 10px; }
-        input, button { margin-top: 10px; padding: 5px; font-size: 16px; width: 90%; }
-        #info { margin-top: 20px; }
-    </style>
+  <meta charset="UTF-8">
+  <title>Town Defense Mortar Planner</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #111; color: #eee; margin: 0; padding: 0; display: flex; flex-direction: row; height: 100vh; }
+    #left { flex: 2; display: flex; flex-direction: column; align-items: center; justify-content: start; padding: 20px; }
+    #right { flex: 1; background: #222; padding: 20px; overflow-y: auto; }
+    canvas { border: 2px solid #555; margin-top: 10px; }
+    input, button { margin-top: 10px; padding: 5px; font-size: 16px; width: 90%; }
+    #info { margin-top: 20px; }
+  </style>
 </head>
 <body>
-    <div id="left">
-        <h1>Mortar Map</h1>
-        <canvas id="mapCanvas" width="700" height="580"></canvas>
-        <button id="deselectBtn">Deselect Mortar</button>
-    </div>
+<div id="left">
+  <h1>Mortar Map</h1>
+  <canvas id="mapCanvas" width="700" height="580"></canvas>
+  <button id="deselectBtn">Deselect Mortar</button>
+</div>
 
-    <div id="right">
-        <h1>Manual Calculator</h1>
-        <input type="number" id="manualDistance" placeholder="Enter Distance in blocks">
-        <button onclick="manualCalculate()">Calculate Angle</button>
+<div id="right">
+  <h1>Manual Calculator</h1>
+  <input type="number" id="manualDistance" placeholder="Enter Distance in blocks">
+  <button onclick="manualCalculate()">Calculate Angle</button>
 
-        <div id="manualResult" style="margin-top:20px;"></div>
+  <div id="manualResult" style="margin-top:20px;"></div>
 
-        <h2>Save Corrected Angle</h2>
-        <input type="number" id="saveDistance" placeholder="Distance in blocks">
-        <input type="number" id="saveAngle" placeholder="Corrected Firing Angle">
-        <button onclick="saveCorrectedAngle()">Save Corrected Angle</button>
+  <h2>Save Corrected Angle</h2>
+  <input type="number" id="saveDistance" placeholder="Distance in blocks">
+  <input type="number" id="saveAngle" placeholder="Corrected Firing Angle">
+  <button onclick="saveCorrectedAngle()">Save Corrected Angle</button>
 
-        <div id="info"></div>
-    </div>
+  <div id="info"></div>
+</div>
 
-    <script>
-    const canvas = document.getElementById('mapCanvas');
-    const ctx = canvas.getContext('2d');
+<script>
+const canvas = document.getElementById('mapCanvas');
+const ctx = canvas.getContext('2d');
 
-    const mapImg = new Image();
-    mapImg.src = 'map.jpg'; // Map file should be named map.jpg in the same folder
+const mapImg = new Image();
+mapImg.src = 'map.jpg'; // make sure your map is named exactly 'map.jpg'
 
-    const topLeft = { x: 25424, z: 5194 };
-    const bottomRight = { x: 26424, z: 6194 };
+const topLeft = { x: 25424, z: 5194 };
+const bottomRight = { x: 26424, z: 6194 };
 
-    const mortars = [
-        { name: 'Mortar 1', x: 25894, z: 5490 },
-        { name: 'Mortar 2', x: 25653, z: 5425 }
-    ];
+const mortars = [
+  { name: 'Mortar 1', x: 25894, z: 5490 },
+  { name: 'Mortar 2', x: 25653, z: 5425 }
+];
 
-    const fineTunedAngles = [
-        { distance: 105, angle: 70 },
-        { distance: 115, angle: 67.2 },
-        { distance: 125, angle: 64.4 },
-        { distance: 135, angle: 62.2 },
-        { distance: 145, angle: 58.6 },
-        { distance: 155, angle: 54.2 },
-        { distance: 165, angle: 46.4 }
-    ];
+const fineTunedAngles = [
+  { distance: 105, angle: 70 },
+  { distance: 115, angle: 67.2 },
+  { distance: 125, angle: 64.4 },
+  { distance: 135, angle: 62.2 },
+  { distance: 145, angle: 58.6 },
+  { distance: 155, angle: 54.2 },
+  { distance: 165, angle: 46.4 }
+];
 
-    let selectedMortar = null;
-    let targetPos = null;
+let selectedMortar = null;
+let targetPos = null;
 
-    function worldToCanvas(x, z) {
-        const px = ((x - topLeft.x) / (bottomRight.x - topLeft.x)) * canvas.width;
-        const py = ((z - topLeft.z) / (bottomRight.z - topLeft.z)) * canvas.height;
-        return { x: px, y: py };
-    }
+function worldToCanvas(x, z) {
+  const px = ((x - topLeft.x) / (bottomRight.x - topLeft.x)) * canvas.width;
+  const py = ((z - topLeft.z) / (bottomRight.z - topLeft.z)) * canvas.height;
+  return { x: px, y: py };
+}
 
-    function canvasToWorld(px, py) {
-        const x = topLeft.x + (px / canvas.width) * (bottomRight.x - topLeft.x);
-        const z = topLeft.z + (py / canvas.height) * (bottomRight.z - topLeft.z);
-        return { x: x, z: z };
-    }
+function canvasToWorld(px, py) {
+  const x = topLeft.x + (px / canvas.width) * (bottomRight.x - topLeft.x);
+  const z = topLeft.z + (py / canvas.height) * (bottomRight.z - topLeft.z);
+  return { x: x, z: z };
+}
 
-    mapImg.onload = function() {
+mapImg.onload = function() {
+  draw();
+};
+
+canvas.addEventListener('click', function(event) {
+  const rect = canvas.getBoundingClientRect();
+  const mouseX = event.clientX - rect.left;
+  const mouseY = event.clientY - rect.top;
+
+  if (!selectedMortar) {
+    for (let mortar of mortars) {
+      const pos = worldToCanvas(mortar.x, mortar.z);
+      if (Math.hypot(pos.x - mouseX, pos.y - mouseY) < 10) {
+        selectedMortar = mortar;
         draw();
-    };
-
-    canvas.addEventListener('click', function(event) {
-        const rect = canvas.getBoundingClientRect();
-        const mouseX = event.clientX - rect.left;
-        const mouseY = event.clientY - rect.top;
-
-        if (!selectedMortar) {
-            for (let mortar of mortars) {
-                const pos = worldToCanvas(mortar.x, mortar.z);
-                if (Math.hypot(pos.x - mouseX, pos.y - mouseY) < 10) {
-                    selectedMortar = mortar;
-                    draw();
-                    return;
-                }
-            }
-        } else {
-            targetPos = canvasToWorld(mouseX, mouseY);
-            draw();
-            showInfo();
-        }
-    });
-
-    document.getElementById('deselectBtn').onclick = function() {
-        selectedMortar = null;
-        targetPos = null;
-        draw();
-        document.getElementById('info').innerHTML = '';
-    };
-
-    function draw() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(mapImg, 0, 0, canvas.width, canvas.height);
-
-        for (let mortar of mortars) {
-            const pos = worldToCanvas(mortar.x, mortar.z);
-            ctx.beginPath();
-            ctx.arc(pos.x, pos.y, 5, 0, 2 * Math.PI);
-            ctx.fillStyle = mortar === selectedMortar ? 'lime' : 'red';
-            ctx.fill();
-            ctx.stroke();
-        }
-
-        if (targetPos) {
-            const pos = worldToCanvas(targetPos.x, targetPos.z);
-            ctx.beginPath();
-            ctx.arc(pos.x, pos.y, 2, 0, 2 * Math.PI);
-            ctx.fillStyle = 'cyan';
-            ctx.fill();
-            ctx.stroke();
-        }
+        return;
+      }
     }
+  } else {
+    targetPos = canvasToWorld(mouseX, mouseY);
+    draw();
+    showInfo();
+  }
+});
 
-    function getSavedCorrectedAngle(distance) {
-        const data = localStorage.getItem('correctedAngles');
-        if (data) {
-            const parsed = JSON.parse(data);
-            if (parsed[distance]) {
-                return parsed[distance];
-            }
-        }
-        return null;
+document.getElementById('deselectBtn').onclick = function() {
+  selectedMortar = null;
+  targetPos = null;
+  draw();
+  document.getElementById('info').innerHTML = '';
+};
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(mapImg, 0, 0, canvas.width, canvas.height);
+
+  for (let mortar of mortars) {
+    const pos = worldToCanvas(mortar.x, mortar.z);
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, 5, 0, 2 * Math.PI);
+    ctx.fillStyle = mortar === selectedMortar ? 'lime' : 'red';
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  if (targetPos) {
+    const pos = worldToCanvas(targetPos.x, targetPos.z);
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, 2, 0, 2 * Math.PI);
+    ctx.fillStyle = 'cyan';
+    ctx.fill();
+    ctx.stroke();
+  }
+}
+
+function getSavedCorrectedAngle(distance) {
+  const data = localStorage.getItem('correctedAngles');
+  if (data) {
+    const parsed = JSON.parse(data);
+    if (parsed[Math.round(distance)]) {
+      return parsed[Math.round(distance)];
     }
+  }
+  return null;
+}
 
-    function calculateAngle(distance) {
-        const savedAngle = getSavedCorrectedAngle(Math.round(distance));
-        if (savedAngle !== null) return savedAngle;
+function calculateAngle(distance) {
+  const savedAngle = getSavedCorrectedAngle(distance);
+  if (savedAngle !== null) return savedAngle;
 
-        for (let i = 0; i < fineTunedAngles.length - 1; i++) {
-            const p1 = fineTunedAngles[i];
-            const p2 = fineTunedAngles[i + 1];
-            if (distance >= p1.distance && distance <= p2.distance) {
-                const ratio = (distance - p1.distance) / (p2.distance - p1.distance);
-                return p1.angle + ratio * (p2.angle - p1.angle);
-            }
-        }
-        if (distance < fineTunedAngles[0].distance) return fineTunedAngles[0].angle;
-        if (distance > fineTunedAngles[fineTunedAngles.length-1].distance) return fineTunedAngles[fineTunedAngles.length-1].angle;
+  for (let i = 0; i < fineTunedAngles.length - 1; i++) {
+    const p1 = fineTunedAngles[i];
+    const p2 = fineTunedAngles[i + 1];
+    if (distance >= p1.distance && distance <= p2.distance) {
+      const ratio = (distance - p1.distance) / (p2.distance - p1.distance);
+      return p1.angle + ratio * (p2.angle - p1.angle);
     }
+  }
+  if (distance < fineTunedAngles[0].distance) return fineTunedAngles[0].angle;
+  if (distance > fineTunedAngles[fineTunedAngles.length-1].distance) return fineTunedAngles[fineTunedAngles.length-1].angle;
+}
 
-    function showInfo() {
-        if (!selectedMortar || !targetPos) return;
+function showInfo() {
+  if (!selectedMortar || !targetPos) return;
 
-        const dx = targetPos.x - selectedMortar.x;
-        const dz = targetPos.z - selectedMortar.z;
-        const distance = Math.sqrt(dx * dx + dz * dz);
+  const dx = targetPos.x - selectedMortar.x;
+  const dz = targetPos.z - selectedMortar.z;
+  const distance = Math.sqrt(dx * dx + dz * dz);
 
-        const firingAngle = calculateAngle(distance);
+  const firingAngle = calculateAngle(distance);
 
-        let lookAngle = Math.atan2(dx, dz) * 180 / Math.PI;
-        lookAngle = (lookAngle + 360) % 360;
-        lookAngle = lookAngle > 180 ? lookAngle - 360 : lookAngle;
+  let lookAngle = Math.atan2(dx, dz) * 180 / Math.PI;
+  lookAngle = (lookAngle + 360) % 360;
+  lookAngle = lookAngle > 180 ? lookAngle - 360 : lookAngle;
 
-        let infoText = `
-            <strong>Selected Mortar:</strong> ${selectedMortar.name}<br>
-            <strong>Distance to Target:</strong> ${distance.toFixed(2)} blocks<br>
-            <strong>Recommended Firing Angle:</strong> ${firingAngle.toFixed(2)}°<br>
-            <strong>Look Direction:</strong> ${lookAngle.toFixed(2)}°<br>
-        `;
+  let infoText = `
+    <strong>Selected Mortar:</strong> ${selectedMortar.name}<br>
+    <strong>Distance to Target:</strong> ${distance.toFixed(2)} blocks<br>
+    <strong>Recommended Firing Angle:</strong> ${firingAngle.toFixed(2)}°<br>
+    <strong>Look Direction:</strong> ${lookAngle.toFixed(2)}°<br>
+  `;
 
-        if (distance > 166) {
-            infoText += `<span style="color:red;"><strong>Warning: Target out of range!</strong></span>`;
-        }
+  if (distance > 166) {
+    infoText += `<span style="color:red;"><strong>Warning: Target out of range!</strong></span>`;
+  }
 
-        document.getElementById('info').innerHTML = infoText;
-    }
+  document.getElementById('info').innerHTML = infoText;
+}
 
-    function manualCalculate() {
-        const distance = parseFloat(document.getElementById('manualDistance').value);
-        if (isNaN(distance)) return;
-        const firingAngle = calculateAngle(distance);
+function manualCalculate() {
+  const distance = parseFloat(document.getElementById('manualDistance').value);
+  if (isNaN(distance)) return;
 
-        document.getElementById('manualResult').innerHTML = `
-            <strong>Manual Entry Distance:</strong> ${distance} blocks<br>
-            <strong>Recommended Firing Angle:</strong> ${firingAngle.toFixed(2)}°<br>
-        `;
-    }
+  let warning = '';
+  if (distance < 104) {
+    warning = `<br><span style="color:orange;">⚠️ Warning: Target is too close for mortar!</span>`;
+  }
+  if (distance > 166) {
+    warning = `<br><span style="color:orange;">⚠️ Warning: Target is out of mortar range!</span>`;
+  }
 
-    function saveCorrectedAngle() {
-        const distance = parseFloat(document.getElementById('saveDistance').value);
-        const angle = parseFloat(document.getElementById('saveAngle').value);
-        if (isNaN(distance) || isNaN(angle)) return;
+  const firingAngle = calculateAngle(distance);
 
-        let data = localStorage.getItem('correctedAngles');
-        data = data ? JSON.parse(data) : {};
-        data[Math.round(distance)] = angle;
-        localStorage.setItem('correctedAngles', JSON.stringify(data));
+  document.getElementById('manualResult').innerHTML = `
+    <strong>Manual Entry Distance:</strong> ${distance} blocks<br>
+    <strong>Recommended Firing Angle:</strong> ${firingAngle.toFixed(2)}°${warning}
+  `;
+}
 
-        alert(`Saved corrected angle for ${Math.round(distance)} meters!`);
-    }
-    </script>
+function saveCorrectedAngle() {
+  const distance = parseFloat(document.getElementById('saveDistance').value);
+  const angle = parseFloat(document.getElementById('saveAngle').value);
+  if (isNaN(distance) || isNaN(angle)) return;
+
+  let data = localStorage.getItem('correctedAngles');
+  data = data ? JSON.parse(data) : {};
+  data[Math.round(distance)] = angle;
+  localStorage.setItem('correctedAngles', JSON.stringify(data));
+
+  alert(`Saved corrected angle for ${Math.round(distance)} meters!`);
+}
+</script>
 </body>
 </html>
