@@ -17,6 +17,7 @@
   <h1>Mortar Map</h1>
   <canvas id="mapCanvas" width="700" height="580"></canvas>
   <button id="deselectBtn">Deselect Mortar</button>
+  <button onclick="window.location.href='adjustments.html'">View Saved Adjustments</button>
 </div>
 
 <div id="right">
@@ -39,7 +40,7 @@ const canvas = document.getElementById('mapCanvas');
 const ctx = canvas.getContext('2d');
 
 const mapImg = new Image();
-mapImg.src = 'map.jpg'; // make sure your map is named exactly 'map.jpg'
+mapImg.src = 'map.jpg'; // map image file should be named exactly 'map.jpg'
 
 const topLeft = { x: 25424, z: 5194 };
 const bottomRight = { x: 26424, z: 6194 };
