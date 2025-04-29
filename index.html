@@ -189,18 +189,21 @@ function drawRangeDonut(mortar) {
   const minRange = (104 / (bottomRight.x - topLeft.x)) * canvas.width;
   const maxRange = (166 / (bottomRight.x - topLeft.x)) * canvas.width;
 
-  const gradient = ctx.createRadialGradient(pos.x, pos.y, minRange, pos.x, pos.y, maxRange);
-  gradient.addColorStop(0, 'rgba(0,255,0,0)');
-  gradient.addColorStop(0.1, 'rgba(0,255,0,0.2)');
-  gradient.addColorStop(1, 'rgba(0,255,0,0)');
+  // Draw minimum range circle (orange)
+  ctx.beginPath();
+  ctx.arc(pos.x, pos.y, minRange, 0, 2 * Math.PI);
+  ctx.strokeStyle = 'orange'; // Minimum range in orange
+  ctx.lineWidth = 2;
+  ctx.stroke();
 
+  // Draw maximum range circle (red)
   ctx.beginPath();
   ctx.arc(pos.x, pos.y, maxRange, 0, 2 * Math.PI);
-  ctx.arc(pos.x, pos.y, minRange, 0, 2 * Math.PI, true);
-  ctx.closePath();
-  ctx.fillStyle = gradient;
-  ctx.fill();
+  ctx.strokeStyle = 'red'; // Maximum range in red
+  ctx.lineWidth = 2;
+  ctx.stroke();
 }
+
 
 function getSavedCorrectedAngle(distance) {
   const data = localStorage.getItem('correctedAngles');
