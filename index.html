@@ -54,7 +54,7 @@ const canvas = document.getElementById('mapCanvas');
 const ctx = canvas.getContext('2d');
 
 const mapImg = new Image();
-mapImg.src = 'map.jpg'; // Your map image should be named exactly 'map.jpg'
+mapImg.src = 'map.jpg'; // Make sure the map image is named exactly 'map.jpg'
 
 const topLeft = { x: 25424, z: 5194 };
 const bottomRight = { x: 26424, z: 6194 };
@@ -155,7 +155,7 @@ function canvasToWorld(px, py) {
 }
 
 function draw() {
-  ctx.setTransform(1, 0, 0, 1, 0, 0); 
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.setTransform(scale, 0, 0, scale, originX, originY);
   ctx.drawImage(mapImg, 0, 0, canvas.width, canvas.height);
@@ -224,8 +224,9 @@ function calculateAngle(distance) {
       return p1.angle + ratio * (p2.angle - p1.angle);
     }
   }
+
   if (distance < fineTunedAngles[0].distance) return fineTunedAngles[0].angle;
-  if (distance > fineTunedAngles[fineTunedAngles.length-1].distance) return fineTunedAngles[fineTunedAngles.length-1].angle;
+  if (distance > fineTunedAngles[fineTunedAngles.length - 1].distance) return fineTunedAngles[fineTunedAngles.length - 1].angle;
 }
 
 function showInfo() {
