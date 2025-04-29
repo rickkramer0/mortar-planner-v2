@@ -1,0 +1,55 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Saved Angle Adjustments</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #111; color: #eee; padding: 20px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    th, td { padding: 10px; border: 1px solid #444; text-align: center; }
+    th { background-color: #222; }
+    tr:nth-child(even) { background-color: #1a1a1a; }
+    a { color: #00bfff; text-decoration: none; }
+    button { margin-top: 20px; padding: 10px; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <h1>Saved Corrected Angles</h1>
+  <table id="adjustmentsTable">
+    <tr>
+      <th>Distance (blocks)</th>
+      <th>Corrected Angle (°)</th>
+      <th>Adjustment vs Estimate (°)</th>
+    </tr>
+  </table>
+
+  <button onclick="window.location.href='index.html'">⬅ Back to Mortar Planner</button>
+
+  <script>
+    const baseAngles = {
+      105: 70, 115: 65, 125: 65, 135: 62.5, 145: 60, 155: 55, 165: 50
+    };
+
+    const data = localStorage.getItem('correctedAngles');
+    if (data) {
+      const parsed = JSON.parse(data);
+      const table = document.getElementById('adjustmentsTable');
+
+      Object.keys(parsed).sort((a, b) => a - b).forEach(dist => {
+        const corrected = parsed[dist];
+        const estimate = baseAngles[dist] ?? "—";
+        const adjustment = typeof estimate === 'number' ? (corrected - estimate).toFixed(2) : "—";
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${dist}</td>
+          <td>${corrected.toFixed(2)}</td>
+          <td>${adjustment}</td>
+        `;
+        table.appendChild(row);
+      });
+    }
+  </script>
+</body>
+</html>
