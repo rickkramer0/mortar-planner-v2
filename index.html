@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <title>Town Defense Mortar Planner</title>
   <style>
-    body { font-family: Arial, sans-serif; background: #111; color: #eee; margin: 0; padding: 0; display: flex; flex-direction: row; height: 100vh; }
-    #left { flex: 2; display: flex; flex-direction: column; align-items: center; justify-content: start; padding: 20px; }
+    body { font-family: Arial, sans-serif; background: #111; color: #eee; margin: 0; padding: 0; display: flex; flex-direction: row; height: 100vh; overflow: hidden; }
+    #left { flex: 2; display: flex; flex-direction: column; align-items: center; justify-content: start; padding: 20px; overflow: hidden; }
     #right { flex: 1; background: #222; padding: 20px; overflow-y: auto; }
-    canvas { border: 2px solid #555; margin-top: 10px; }
+    canvas { border: 2px solid #555; margin-top: 10px; cursor: grab; }
     input, button { margin-top: 10px; padding: 5px; font-size: 16px; width: 90%; }
     #info { margin-top: 20px; }
   </style>
@@ -54,7 +54,7 @@ const canvas = document.getElementById('mapCanvas');
 const ctx = canvas.getContext('2d');
 
 const mapImg = new Image();
-mapImg.src = 'map.jpg'; // Make sure the map image is named exactly 'map.jpg'
+mapImg.src = 'map.jpg'; // Your map image should be named exactly 'map.jpg'
 
 const topLeft = { x: 25424, z: 5194 };
 const bottomRight = { x: 26424, z: 6194 };
@@ -77,25 +77,47 @@ const fineTunedAngles = [
 let selectedMortar = null;
 let targetPos = null;
 
-function worldToCanvas(x, z) {
-  const px = ((x - topLeft.x) / (bottomRight.x - topLeft.x)) * canvas.width;
-  const py = ((z - topLeft.z) / (bottomRight.z - topLeft.z)) * canvas.height;
-  return { x: px, y: py };
-}
+// Zoom and Pan Variables
+let scale = 1;
+let originX = 0;
+let originY = 0;
+let isDragging = false;
+let startX, startY;
 
-function canvasToWorld(px, py) {
-  const x = topLeft.x + (px / canvas.width) * (bottomRight.x - topLeft.x);
-  const z = topLeft.z + (py / canvas.height) * (bottomRight.z - topLeft.z);
-  return { x: x, z: z };
-}
+canvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const zoom = e.deltaY < 0 ? 1.1 : 0.9;
+  scale *= zoom;
+  draw();
+});
+
+canvas.addEventListener('mousedown', (e) => {
+  isDragging = true;
+  startX = e.offsetX - originX;
+  startY = e.offsetY - originY;
+  canvas.style.cursor = 'grabbing';
+});
+
+canvas.addEventListener('mouseup', () => {
+  isDragging = false;
+  canvas.style.cursor = 'grab';
+});
+
+canvas.addEventListener('mousemove', (e) => {
+  if (isDragging) {
+    originX = e.offsetX - startX;
+    originY = e.offsetY - startY;
+    draw();
+  }
+});
+
 mapImg.onload = function() {
   draw();
 };
-
 canvas.addEventListener('click', function(event) {
   const rect = canvas.getBoundingClientRect();
-  const mouseX = event.clientX - rect.left;
-  const mouseY = event.clientY - rect.top;
+  const mouseX = (event.clientX - rect.left - originX) / scale;
+  const mouseY = (event.clientY - rect.top - originY) / scale;
 
   if (!selectedMortar) {
     for (let mortar of mortars) {
@@ -120,8 +142,22 @@ document.getElementById('deselectBtn').onclick = function() {
   document.getElementById('info').innerHTML = '';
 };
 
+function worldToCanvas(x, z) {
+  const px = ((x - topLeft.x) / (bottomRight.x - topLeft.x)) * canvas.width;
+  const py = ((z - topLeft.z) / (bottomRight.z - topLeft.z)) * canvas.height;
+  return { x: px, y: py };
+}
+
+function canvasToWorld(px, py) {
+  const x = topLeft.x + (px / canvas.width) * (bottomRight.x - topLeft.x);
+  const z = topLeft.z + (py / canvas.height) * (bottomRight.z - topLeft.z);
+  return { x: x, z: z };
+}
+
 function draw() {
+  ctx.setTransform(1, 0, 0, 1, 0, 0); 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.setTransform(scale, 0, 0, scale, originX, originY);
   ctx.drawImage(mapImg, 0, 0, canvas.width, canvas.height);
 
   for (let mortar of mortars) {
@@ -133,6 +169,10 @@ function draw() {
     ctx.stroke();
   }
 
+  if (selectedMortar) {
+    drawRangeDonut(selectedMortar);
+  }
+
   if (targetPos) {
     const pos = worldToCanvas(targetPos.x, targetPos.z);
     ctx.beginPath();
@@ -141,6 +181,24 @@ function draw() {
     ctx.fill();
     ctx.stroke();
   }
+}
+
+function drawRangeDonut(mortar) {
+  const pos = worldToCanvas(mortar.x, mortar.z);
+  const minRange = (104 / (bottomRight.x - topLeft.x)) * canvas.width;
+  const maxRange = (166 / (bottomRight.x - topLeft.x)) * canvas.width;
+
+  const gradient = ctx.createRadialGradient(pos.x, pos.y, minRange, pos.x, pos.y, maxRange);
+  gradient.addColorStop(0, 'rgba(0,255,0,0)');
+  gradient.addColorStop(0.1, 'rgba(0,255,0,0.2)');
+  gradient.addColorStop(1, 'rgba(0,255,0,0)');
+
+  ctx.beginPath();
+  ctx.arc(pos.x, pos.y, maxRange, 0, 2 * Math.PI);
+  ctx.arc(pos.x, pos.y, minRange, 0, 2 * Math.PI, true);
+  ctx.closePath();
+  ctx.fillStyle = gradient;
+  ctx.fill();
 }
 
 function getSavedCorrectedAngle(distance) {
@@ -177,6 +235,15 @@ function showInfo() {
   const dz = targetPos.z - selectedMortar.z;
   const distance = Math.sqrt(dx * dx + dz * dz);
 
+  if (distance < 104 || distance > 166) {
+    document.getElementById('info').innerHTML = `
+      <strong>Selected Mortar:</strong> ${selectedMortar.name}<br>
+      <strong>Distance to Target:</strong> ${distance.toFixed(2)} blocks<br>
+      <span style="color:orange;">⚠️ Target is out of effective firing range!</span>
+    `;
+    return;
+  }
+
   const firingAngle = calculateAngle(distance);
 
   let lookAngle = Math.atan2(dx, dz) * 180 / Math.PI;
@@ -190,10 +257,6 @@ function showInfo() {
     <strong>Look Direction:</strong> ${lookAngle.toFixed(2)}°<br>
   `;
 
-  if (distance > 166) {
-    infoText += `<span style="color:red;"><strong>Warning: Target out of range!</strong></span>`;
-  }
-
   document.getElementById('info').innerHTML = infoText;
 }
 
@@ -201,19 +264,26 @@ function manualCalculate() {
   const distance = parseFloat(document.getElementById('manualDistance').value);
   if (isNaN(distance)) return;
 
-  let warning = '';
   if (distance < 104) {
-    warning = `<br><span style="color:orange;">⚠️ Warning: Target is too close for mortar!</span>`;
+    document.getElementById('manualResult').innerHTML = `
+      <strong>Manual Entry Distance:</strong> ${distance} blocks<br>
+      <span style="color:orange;">⚠️ Target too close for mortar!</span>
+    `;
+    return;
   }
   if (distance > 166) {
-    warning = `<br><span style="color:orange;">⚠️ Warning: Target is out of mortar range!</span>`;
+    document.getElementById('manualResult').innerHTML = `
+      <strong>Manual Entry Distance:</strong> ${distance} blocks<br>
+      <span style="color:orange;">⚠️ Target out of mortar range!</span>
+    `;
+    return;
   }
 
   const firingAngle = calculateAngle(distance);
 
   document.getElementById('manualResult').innerHTML = `
     <strong>Manual Entry Distance:</strong> ${distance} blocks<br>
-    <strong>Recommended Firing Angle:</strong> ${firingAngle.toFixed(2)}°${warning}
+    <strong>Recommended Firing Angle:</strong> ${firingAngle.toFixed(2)}°
   `;
 }
 
